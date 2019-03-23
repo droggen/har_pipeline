@@ -19,4 +19,5 @@ More generally, HAR pipeline allows to launch multiple command line tools in par
 # History
 
 Version | Release date | Changes
+------- | ------------ | -------
 0.9 | 23.03.2019 | First release
