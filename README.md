@@ -7,3 +7,16 @@ A HAR pipeline consists of a series of independent executables communicating ove
 More generally, HAR pipeline allows to launch multiple command line tools in parallel and display their output in a tabbed interface.
 
 
+
+
+# Key features
+
+* Parses batch or shell scripts
+* Highlights comments and invalid commands (i.e. executable not found)
+* Joint start/stop of the entire pipeline
+* Tabbed interface showing the output of each command
+
+# History
+
+Version | Release date | Changes
+0.9 | 23.03.2019 | First release
