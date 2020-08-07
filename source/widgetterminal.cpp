@@ -28,6 +28,11 @@ WidgetTerminal::WidgetTerminal(QWidget *parent) :
     terminal(new DTerminal(1000))
 {
     ui->setupUi(this);
+
+    //setFocusPolicy(Qt::StrongFocus);  // To accept focus, and thus receive keyboard events
+    setFocusPolicy(Qt::WheelFocus);     // To accept focus, and thus receive keyboard events, when: click, tab, mouse wheel.
+
+    captureenabled=false;
 }
 
 WidgetTerminal::~WidgetTerminal()
@@ -72,4 +77,23 @@ void WidgetTerminal::updateTerminal()
     ui->uiptTerminal->setPlainText(str);
     ui->uiptTerminal->verticalScrollBar()->setValue(ui->uiptTerminal->verticalScrollBar()->maximum());
 }
+void WidgetTerminal::keyPressEvent(QKeyEvent *event)
+{
+    if(captureenabled)
+    {
+        //QString str = QString("keypress %1 text '%2'\n").arg(event->key()).arg(event->text());
+        //print(str);
+        emit keyPressed(event->key(),event->text());
+        //emit keyPressed(event->key());
+    }
+    else
+    {
+        //print("Capture not enabled");
+    }
 
+}
+
+void WidgetTerminal::setCaptureKey(bool captureenable)
+{
+    captureenabled = captureenable;
+}

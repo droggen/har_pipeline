@@ -13,7 +13,8 @@ class MainWindow;
 
 typedef struct
 {
-    QString exe;
+    QString exe;                // Just filename
+    QString exeandpath;         // Filename with .exe (on windows) and fullpath
     QString param;
     QStringList param_list;     // same as param but split in list
     QProcess *process;
@@ -23,6 +24,7 @@ typedef struct
 typedef struct
 {
     QString exe;
+    QString exeandpath;         // Filename with .exe (on windows) and fullpath
     QString param;
 } PIPELINEELEMENT;
 
@@ -46,23 +48,27 @@ private:
     void printPipeline();
     void pipelineKill();
     void processesClear();
+    //void ClearProcessTabs();
 
     void print(QString str);
     int printf(const char *format, ...);
     void Run();
-    void ClearProcessTabs();
+    void RunProcess(PROCESS &process,int i);
 
 
 
-    void setModeRun();
+    void setModeRunning();
     void setModeIdle();
+    void setModeStopping();
 
     void closeEvent(QCloseEvent *event);
 
+
 private slots:
-    void slotProcessReadyRead(int processidx);
+    void slotProcessReadyRead(int i);
     void slotProcessErrorOccurred(QProcess::ProcessError error);
     void slotProcessFinished(int processidx, int exitCode,QProcess::ExitStatus exitStatus);
+    void slotProcessKeyPress(int k,QString t,int processidx);
 
     void toto(int i);
 
@@ -73,6 +79,12 @@ private slots:
     void on_action_Stop_triggered();
 
     void on_action_Quit_triggered();
+
+    //void on_pbLoad_clicked();
+
+    void on_action_About_triggered();
+
+    void on_pushButton_clicked();
 
 private:
     Ui::MainWindow *ui;

@@ -3,7 +3,7 @@
 
 #include <QString>
 
-bool isFileInPath(QString fileName);
+bool isFileInPath(QString fileName, QString &fileNameWithPath);
 QString addFileExtensionWindows(QString fileName);
 
 #endif // HELPER_H

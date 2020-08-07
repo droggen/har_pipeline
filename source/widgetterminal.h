@@ -43,11 +43,19 @@ public:
     void addString(const QString &str);
     void print(QString str);
     void clear();
+    void setCaptureKey(bool captureenable);
 
+protected:
+    virtual void keyPressEvent(QKeyEvent *event);
 private:
     Ui::WidgetTerminal *ui;
 
     DTerminal *terminal;
+    bool captureenabled;
+
+signals:
+    //void keyPressed(int key);
+    void keyPressed(int key,QString text);
 };
 
 #endif // WIDGETTERMINAL_H

@@ -39,15 +39,16 @@ https://stackoverflow.com/questions/34245235/qt-how-to-redirect-qprocess-stdout-
 
 */
 
-
+#include <Qt>
 #include <QFileInfo>
 #include <QFileDialog>
 #include <QMessageBox>
 #include <QTextStream>
 #include <QTabBar>
+#include <QCloseEvent>
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
-
+#include "cio.h"
 
 #include "helper.h"
 
@@ -64,7 +65,7 @@ MainWindow::MainWindow(QWidget *parent) :
 
 
 #ifdef DEVELMODE
-    print("Starting up\n");
+    //ConsoleInit();            // This console conflicts with the QProcess start of processes -> do not use
 #else
     // Hide console
     console->setVisible(false);
@@ -72,7 +73,8 @@ MainWindow::MainWindow(QWidget *parent) :
 #endif
 
     // Remove all tabs in uitwProcessTabs
-    ClearProcessTabs();
+    //ClearProcessTabs();
+    processesClear();
 
     //
     statusBar()->addWidget(statusLabel = new QLabel);
@@ -120,7 +122,7 @@ int MainWindow::printf(const char *format, ...)
 /*
  * Set UI in RUN mode: don't allow load, don't allow run
 */
-void MainWindow::setModeRun()
+void MainWindow::setModeRunning()
 {
     // Deactivate run/load button
     ui->pbStart->setEnabled(false);
@@ -152,6 +154,21 @@ void MainWindow::setModeIdle()
     ui->action_Stop->setEnabled(false);
     // Status bar to idle
     statusLabel->setText("Idle");
+}
+void MainWindow::setModeStopping()
+{
+    // Deactivate start/load button
+    ui->pbStart->setEnabled(false);
+    ui->pbLoad->setEnabled(false);
+    // Deactivate start/load menu
+    ui->action_Load->setEnabled(false);
+    ui->action_Start->setEnabled(false);
+    // Deactivate stop button
+    ui->pbStop->setEnabled(false);
+    // Deactivate stop menu
+    ui->action_Stop->setEnabled(false);
+    // Status bar to idle
+    statusLabel->setText("Stopping");
 }
 
 
@@ -235,6 +252,7 @@ void MainWindow::slotProcessFinished(int i,int rv,QProcess::ExitStatus es)
     // If all finished go back to idle
     if(allfinished)
     {
+        printf("All processes terminated\n\n\n\n");
         setModeIdle();
         // Switch to run tab
         ui->tabWidget->setCurrentIndex(0);
@@ -242,13 +260,6 @@ void MainWindow::slotProcessFinished(int i,int rv,QProcess::ExitStatus es)
     ui->statusBar->showMessage(QString("Running processes: %1").arg(numrunning),500);
 }
 
-/*
- * Remove all tabs in the status tab.
- */
-void MainWindow::ClearProcessTabs()
-{
-    ui->uitwProcessTabs->clear();
-}
 
 
 /*
@@ -256,47 +267,70 @@ void MainWindow::ClearProcessTabs()
 */
 void MainWindow::Run()
 {
-    // Clear all process tabs
-    ClearProcessTabs();
 
 
     // Iterate all the processes to launch
     for(int i=0;i<processes.size();i++)
     {
-        printf("Starting process %s\n",processes[i].exe.toStdString().c_str());
-
-        // Create the console
-        processes[i].console = new WidgetTerminal;
-
-        // Set the header above the terminal field with the command line parameters
-        processes[i].console->setTitle(processes[i].param);
-
-        // Add the console to the tabwidget
-        ui->uitwProcessTabs->addTab(processes[i].console,QFileInfo(processes[i].exe).baseName());
-
-        // Create the process and hook it up
-        processes[i].process = new QProcess;
-
-        // Connect readyRead - use lambda to pass process number.
-        connect(processes[i].process,&QProcess::readyRead,this,[=](){ slotProcessReadyRead(i); } );
-
-        // Connect finished - use lambda to pass process number.
-        connect(processes[i].process, (void(QProcess::*)(int _rv,QProcess::ExitStatus _es))&QProcess::finished, this, [=](int _rv,QProcess::ExitStatus _es){ slotProcessFinished(i,_rv,_es); } );
-
-        // Connect error
-        connect(processes[i].process,&QProcess::errorOccurred,this,&MainWindow::slotProcessErrorOccurred);
-        //connect(&process, &QProcess::finished, this, &MainWindow::processFinished);
-
-        // Combine stdout and stderr
-        processes[i].process->setProcessChannelMode(QProcess::MergedChannels);
-
-        // Start
-        //processes[i].process->start(processes[i].exe,QProcess::Unbuffered | QProcess::ReadWrite);
-        processes[i].process->start(processes[i].exe,processes[i].param_list,QProcess::Unbuffered | QProcess::ReadWrite);
-        //QProcess::Unbuffered
-
-
+        RunProcess(processes[i],i);
     }
+}
+void MainWindow::RunProcess(PROCESS &process,int i)
+{
+    printf("Starting process %s\n",process.exe.toStdString().c_str());
+    printf("in: %s\n",process.exeandpath.toStdString().c_str());
+
+    // Create the console
+    process.console = new WidgetTerminal;
+
+    // Activate the keyboard grab
+    process.console->setCaptureKey(true);
+
+    // Connect the signal to something
+    /*connect(process.console,&WidgetTerminal::keyPressed,
+            this,[=](int k){ slotProcessKeyPress(k,i); }
+        );*/
+    connect(process.console,&WidgetTerminal::keyPressed,
+                this,[=](int k,QString t){ slotProcessKeyPress(k,t,i); }
+            );
+
+    // Set the header above the terminal field with the command line parameters
+    process.console->setTitle(process.param);
+
+    // Add the console to the tabwidget
+    ui->uitwProcessTabs->addTab(process.console,QFileInfo(process.exe).baseName());
+
+    // Create the process and hook it up
+    process.process = new QProcess;
+
+    // Connect readyRead - use lambda to pass process number.
+    connect(process.process,&QProcess::readyRead,this,[=](){ slotProcessReadyRead(i); } );
+
+    // Connect finished - use lambda to pass process number.
+    connect(process.process, (void(QProcess::*)(int _rv,QProcess::ExitStatus _es))&QProcess::finished, this, [=](int _rv,QProcess::ExitStatus _es){ slotProcessFinished(i,_rv,_es); } );
+
+    // Connect error
+    connect(process.process,&QProcess::errorOccurred,this,&MainWindow::slotProcessErrorOccurred);
+    //connect(&process, &QProcess::finished, this, &MainWindow::processFinished);
+
+    // Combine stdout and stderr
+    process.process->setProcessChannelMode(QProcess::MergedChannels);
+
+    // Start: QProcess starts programs which are in the path automatically
+    // On windows, the program needs not be terminated by .exe
+    //printf("doing start of '%s'\n",processes[i].exe.toStdString().c_str());
+    /*
+     * har_relay: OK
+    har_relay.exe: OK
+    C:\bin\hartools-release-2020-01-25\har_relay.exe: ok
+    C:\bin\hartools-release-2020-01-25\har_relay: ok
+    C:/bin/hartools-release-2020-01-25/har_relay.exe
+    C:/bin/hartools-release-2020-01-25/har_relay: ok
+    */
+    process.process->start(process.exe,process.param_list,QProcess::Unbuffered | QProcess::ReadWrite);
+
+
+
 }
 
 
@@ -307,9 +341,10 @@ void MainWindow::printPipeline()
 {
     PIPELINEELEMENT pe;
     print("Current pipeline:");
+    int i=0;
     foreach(pe, pipeline)
     {
-        printf("Exe: '%s' param: '%s'\n",pe.exe.toStdString().c_str(),pe.param.toStdString().c_str());
+        printf("%d: '%s' in '%s' param '%s'\n",i++,pe.exe.toStdString().c_str(),pe.exeandpath.toStdString().c_str(),pe.param.toStdString().c_str());
     }
 }
 
@@ -332,8 +367,10 @@ void MainWindow::on_action_Load_triggered()
     // Check if file exists, open, load, display and switch tab to the pipeline view
     if(!fileName.isNull())
     {
-          loadPipeline(fileName);
-          ui->tabWidget->setCurrentIndex(0);
+        // Clear terminal
+        console->clear();
+        loadPipeline(fileName);
+        ui->tabWidget->setCurrentIndex(0);
     }
 }
 
@@ -355,20 +392,20 @@ void MainWindow::loadPipeline(QString fname)
     // Clear the text edit showing the pipeline
     ui->textEdit->clear();
 
-    printf("file to open: %s\n",fname.toStdString().c_str());
+    printf("Pipeline: %s\n",fname.toStdString().c_str());
 
     QString path = QFileInfo(fname).path();
 
-    printf("path: %s\n",path.toStdString().c_str());
-    printf("Current path: %s\n",QDir::currentPath().toStdString().c_str());
+    //printf("Path of pipeline: '%s'\n",path.toStdString().c_str());
+    //printf("Current path: %s\n",QDir::currentPath().toStdString().c_str());
 
     if(!QDir::setCurrent(path))
-        printf("Can't change path\n");
+        printf("Error: cannot change path\n");
 
-    printf("Current path: %s\n",QDir::currentPath().toStdString().c_str());
+    //printf("Changing path to: %s\n",QDir::currentPath().toStdString().c_str());
 
 
-
+    // in: input text stream reading from the pipeline
     QTextStream in(&file);
 
     pipeline.clear();
@@ -376,7 +413,7 @@ void MainWindow::loadPipeline(QString fname)
     while(!in.atEnd())
     {
         QString line = in.readLine();
-        print(line);
+        //print(line);
 
         // Trim line
         line = line.trimmed();
@@ -389,7 +426,7 @@ void MainWindow::loadPipeline(QString fname)
         }
         else
         {
-            // Not a comment nor empty - valid file or error
+            // Not a comment nor empty: either valid file or error
             // Split executable from parameters - find first space
             // (TODO: fix if path has space)
             int sp = line.indexOf(" ");
@@ -407,18 +444,21 @@ void MainWindow::loadPipeline(QString fname)
                 pe.param = "";
             }
 
-            printf("exe before: '%s'\n",pe.exe.toStdString().c_str());
-            printf("param: '%s'\n",pe.param.toStdString().c_str());
+            //printf("exe before: '%s'\n",pe.exe.toStdString().c_str());
+            //printf("param: '%s'\n",pe.param.toStdString().c_str());
 
 
             // Add .exe on windows
-            pe.exe = addFileExtensionWindows(pe.exe);
-            printf("exe after: '%s'\n",pe.exe.toStdString().c_str());
+            //pe.exe = addFileExtensionWindows(pe.exe);
+            //printf("exe after: '%s'\n",pe.exe.toStdString().c_str());
 
             // Check if file is existing and color accordingly
             //if (QFileInfo::exists(pe.exe) && QFileInfo(pe.exe).isFile())
-            if(isFileInPath(pe.exe))
+            QString exeandpath;
+            if(isFileInPath(pe.exe,exeandpath))
             {
+                pe.exeandpath=exeandpath;
+                //printf("Found file '%s' in path '%s'\n",pe.exe.toStdString().c_str(),exeandpath.toStdString().c_str());
                 ui->textEdit->setTextColor(QColor(0,0,0));
                 // Valid: add to pipeline
                 pipeline.append(pe);
@@ -428,10 +468,6 @@ void MainWindow::loadPipeline(QString fname)
                 ui->textEdit->setTextColor(QColor(255,0,0));
             }
 
-            //
-            //printf("Checking if %s exists\n",pe.exe.toStdString().c_str());
-            //bool e = isFileInPath(pe.exe);
-            //printf("e: %d\n",(int)e);
         }
         ui->textEdit->append(line);
     }
@@ -455,7 +491,27 @@ void MainWindow::processesClear()
         delete processes[i].process;
     }
     processes.clear();
+    ui->uitwProcessTabs->clear();
 }
+/*
+ * Remove all tabs in the status tab.
+ */
+/*void MainWindow::ClearProcessTabs()
+{
+    //ui->uitwProcessTabs->clear();
+}*/
+
+void MainWindow::pipelineKill()
+{
+    // Iterate all the processes to kill them
+    for(int i=0;i<processes.size();i++)
+    {
+        processes[i].process->kill();
+    }
+    // Delete the terminal and process
+    //processesClear();
+}
+
 
 /*
  * Launches the pipeline loaded in pipeline.
@@ -463,20 +519,26 @@ void MainWindow::processesClear()
 */
 void MainWindow::on_action_Start_triggered()
 {
+    // Only start if there is a pipeline loaded
+    if(pipeline.size()==0)
+        return;
 
+    // pipelineKill();      // Pipeline should be killed: on start there's no pipeline; and enable start only if all processes are dead.
+    // Delete the terminal widgets and QProcess and remove from the tab.
+    processesClear();
 
-
-    // Set mode to "run" - don't allow run, don't allow load
-    setModeRun();
+    // Set mode to "run" - prevents another run, load
+    setModeRunning();
 
     // Run the pipeline.
     PROCESS p;
     PIPELINEELEMENT pe;
 
-    processesClear();
+
     foreach(pe,pipeline)
     {
         p.exe = pe.exe;
+        p.exeandpath = pe.exeandpath;
         p.param = pe.param;
 
         // Split the param as QStringList - if no parameters split returns one element so handle this special case
@@ -498,19 +560,14 @@ void MainWindow::on_action_Start_triggered()
 }
 
 
-void MainWindow::pipelineKill()
-{
-    // Iterate all the processes to kill
-    for(int i=0;i<processes.size();i++)
-    {
-        processes[i].process->kill();
-    }
-}
+
 
 
 
 void MainWindow::on_action_Stop_triggered()
 {
+    // Immediately switch the UI to "stopping" to prevent multiple calls...
+    setModeStopping();
     pipelineKill();
 }
 
@@ -528,3 +585,73 @@ void MainWindow::on_action_Quit_triggered()
 {
     close();
 }
+
+void MainWindow::on_action_About_triggered()
+{
+    // About box
+    QMessageBox::about(this, "About",
+       "<p><b>HAR Pipeline</b></p>\n"
+       "<p>Version 2020-08-06</p>"
+       "<p>(c) 2019-2020 Daniel Roggen</p>");
+}
+
+void MainWindow::on_pushButton_clicked()
+{
+    // Try to send a character to a terminal
+
+    printf("Writing\n");
+    processes[0].process->write("2");
+}
+
+void MainWindow::slotProcessKeyPress(int k,QString t,int processidx)
+{
+    printf("Slot process keypress: process %d key %d text '%s'\n",processidx,k,t.toStdString().c_str());
+    QByteArray b = t.toUtf8();
+    const char *s = t.toStdString().c_str();
+    printf("utf8 (%d): ",b.size());
+    for(int i=0;i<b.size();i++)
+        printf("%d ",(int)b[i]);
+    printf("\n");
+    printf("c_str (%d): ",strlen(s));
+    for(int i=0;i<strlen(s);i++)
+        printf("%d ",s[i]);
+    printf("\n");
+    printf("1 ");
+    printf("2 ");
+    printf("3 ");
+    printf("\n");
+
+
+    // Send the key to the process
+    /*if(k>=0x01000000)
+    {
+        //if(k==Qt::Key_Escape)
+          //  processes[processidx].process->write();
+        if(k==Qt::Key_Enter || k==Qt::Key_Return)
+        {
+            printf("writing enter\n");
+            QByteArray e;
+            e.append(13);
+            e.append(10);
+            processes[processidx].process->write(e);
+        }
+
+    }
+    else
+        processes[processidx].process->write(t.toUtf8());*/
+
+    // Must send a CR/LF if enter is sent, otherwise the pipeline blocks
+    QByteArray ba;
+    for(int i=0;i<b.size();i++)
+    {
+        ba.append(b[i]);
+        if(((int)b[i])==13)
+            ba.append(10);
+    }
+    processes[processidx].process->write(ba);
+
+
+}
+
+
+

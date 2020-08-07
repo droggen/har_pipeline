@@ -6,15 +6,19 @@
 /*
  * Check if fileName is in the current directory or anywhere in the path
 */
-bool isFileInPath(QString fileName)
+bool isFileInPath(QString fileName,QString &fileNameWithPath)
 {
+
+
     // Add extension under windows
     fileName = addFileExtensionWindows(fileName);
+
+    fileNameWithPath=fileName;
 
     // Check current directory
     if (QFileInfo::exists(fileName) && QFileInfo(fileName).isFile())
     {
-        //printf("Exists in current dir\n");
+        printf("Exists in current dir\n");
         return true;
     }
 
@@ -33,11 +37,12 @@ bool isFileInPath(QString fileName)
             //printf("\t%s\n",s3.toStdString().c_str());
 
             QString full = QDir(s3).filePath(fileName);
-            //printf("full: %s\n",full.toStdString().c_str());
+            printf("full: %s\n",full.toStdString().c_str());
 
             if (QFileInfo::exists(full) && QFileInfo(full).isFile())
             {
-                //printf("Exists in %s\n",full.toStdString().c_str());
+                printf("Exists in %s\n",full.toStdString().c_str());
+                fileNameWithPath=full;
                 return true;
             }
         }

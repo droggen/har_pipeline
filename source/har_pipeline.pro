@@ -23,6 +23,7 @@ DEFINES += QT_DEPRECATED_WARNINGS
 CONFIG += c++11
 
 SOURCES += \
+   cio.cpp \
         main.cpp \
         mainwindow.cpp \
     dlinereader.cpp \
@@ -31,6 +32,7 @@ SOURCES += \
     helper.cpp
 
 HEADERS += \
+   cio.h \
         mainwindow.h \
     dlinereader.h \
     dterminal.h \
