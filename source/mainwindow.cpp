@@ -591,7 +591,7 @@ void MainWindow::on_action_About_triggered()
     // About box
     QMessageBox::about(this, "About",
        "<p><b>HAR Pipeline</b></p>\n"
-       "<p>Version 2020-08-06</p>"
+       "<p>Version 2020-08-07</p>"
        "<p>(c) 2019-2020 Daniel Roggen</p>");
 }
 
@@ -605,9 +605,9 @@ void MainWindow::on_pushButton_clicked()
 
 void MainWindow::slotProcessKeyPress(int k,QString t,int processidx)
 {
-    printf("Slot process keypress: process %d key %d text '%s'\n",processidx,k,t.toStdString().c_str());
+    //printf("Slot process keypress: process %d key %d text '%s'\n",processidx,k,t.toStdString().c_str());
     QByteArray b = t.toUtf8();
-    const char *s = t.toStdString().c_str();
+    /*const char *s = t.toStdString().c_str();
     printf("utf8 (%d): ",b.size());
     for(int i=0;i<b.size();i++)
         printf("%d ",(int)b[i]);
@@ -615,11 +615,8 @@ void MainWindow::slotProcessKeyPress(int k,QString t,int processidx)
     printf("c_str (%d): ",strlen(s));
     for(int i=0;i<strlen(s);i++)
         printf("%d ",s[i]);
-    printf("\n");
-    printf("1 ");
-    printf("2 ");
-    printf("3 ");
-    printf("\n");
+    printf("\n");*/
+
 
 
     // Send the key to the process
@@ -640,7 +637,7 @@ void MainWindow::slotProcessKeyPress(int k,QString t,int processidx)
     else
         processes[processidx].process->write(t.toUtf8());*/
 
-    // Must send a CR/LF if enter is sent, otherwise the pipeline blocks
+    // Must send a CR/LF if enter is sent, otherwise the process reading blocks
     QByteArray ba;
     for(int i=0;i<b.size();i++)
     {
