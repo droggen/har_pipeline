@@ -84,7 +84,6 @@ private slots:
 
     void on_action_About_triggered();
 
-    void on_pushButton_clicked();
 
 private:
     Ui::MainWindow *ui;

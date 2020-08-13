@@ -591,17 +591,10 @@ void MainWindow::on_action_About_triggered()
     // About box
     QMessageBox::about(this, "About",
        "<p><b>HAR Pipeline</b></p>\n"
-       "<p>Version 2020-08-07</p>"
+       "<p>Version 2020-08-13</p>"
        "<p>(c) 2019-2020 Daniel Roggen</p>");
 }
 
-void MainWindow::on_pushButton_clicked()
-{
-    // Try to send a character to a terminal
-
-    printf("Writing\n");
-    processes[0].process->write("2");
-}
 
 void MainWindow::slotProcessKeyPress(int k,QString t,int processidx)
 {
